@@ -117,29 +117,8 @@ CREATE INDEX IF NOT EXISTS idx_trains_status ON trains(status);
 CREATE INDEX IF NOT EXISTS idx_trains_departure ON trains(departure_time);
 
 -- ============================================================================
--- TABLE: incidents (Incidents et perturbations)
--- ============================================================================
-CREATE TABLE IF NOT EXISTS incidents (
-    id SERIAL PRIMARY KEY,
-    incident_id VARCHAR(100) UNIQUE NOT NULL,
-    line_code VARCHAR(200) REFERENCES lines(line_code) ON DELETE SET NULL,
-    title VARCHAR(500) NOT NULL,
-    description TEXT,
-    severity VARCHAR(20) NOT NULL,
-    category VARCHAR(100),
-    status VARCHAR(50) DEFAULT 'active',
-    start_date TIMESTAMP WITH TIME ZONE,
-    end_date TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE
-);
-
-CREATE INDEX IF NOT EXISTS idx_incidents_id ON incidents(incident_id);
-CREATE INDEX IF NOT EXISTS idx_incidents_line ON incidents(line_code);
-CREATE INDEX IF NOT EXISTS idx_incidents_severity ON incidents(severity);
-CREATE INDEX IF NOT EXISTS idx_incidents_status ON incidents(status);
-CREATE INDEX IF NOT EXISTS idx_incidents_dates ON incidents(start_date, end_date);
-
+-- NOTE: Incidents/Disruptions are fetched directly from Navitia API in real-time
+-- No database storage needed for incidents
 -- ============================================================================
 -- TABLE: station_delay_stats (Statistiques de retards par gare)
 -- ============================================================================

@@ -2,17 +2,18 @@
 
 from datetime import datetime, timedelta
 from typing import Optional
-import random
 
 from fastapi import APIRouter, Depends, Request, HTTPException, Query
+from sqlalchemy.orm import Session
 
 from app.core.rate_limit import limiter
 from app.core.security import require_keycloak_token
+from app.core.database import get_db
+from app.models.db import Station as DBStation
 from app.models.schemas import (
     StationList, StationDetail, Station, StationCoordinates,
     StationDelayStats, DelayInfo
 )
-from app.services.opendata_service import get_opendata_service
 from app.services.navitia_service import get_navitia_service
 
 
@@ -27,49 +28,45 @@ router = APIRouter(
 @limiter.limit("100/minute")
 async def list_stations(
     request: Request,
+    db: Session = Depends(get_db),
     limit: int = Query(100, ge=1, le=500, description="Nombre maximum de gares à retourner"),
     offset: int = Query(0, ge=0, description="Offset pour la pagination"),
     search: Optional[str] = Query(None, description="Recherche par nom de gare")
 ) -> StationList:
     """
-    Récupère la liste des gares SNCF depuis le dataset liste-des-gares.
+    Récupère la liste des gares SNCF depuis la base de données.
 
     Permet de lister toutes les gares du réseau ferroviaire français avec pagination
     et recherche par nom.
     """
     try:
-        service = get_opendata_service()
-
+        query = db.query(DBStation)
+        
         if search:
-            data = service.search_stations(search, limit=limit)
-        else:
-            data = service.get_stations(limit=limit, offset=offset)
+            query = query.filter(DBStation.name.ilike(f"%{search}%"))
+        
+        total = query.count()
+        db_stations = query.order_by(DBStation.name).offset(offset).limit(limit).all()
 
         stations = []
-        for item in data.get("results", []):
-            record = item.get("record", {})
-            fields = record.get("fields", {})
-
+        for db_station in db_stations:
             coords = None
-            if "coordonnees_geographiques" in fields:
-                geo = fields["coordonnees_geographiques"]
-                if isinstance(geo, dict):
-                    coords = StationCoordinates(
-                        latitude=geo.get("lat", 0.0),
-                        longitude=geo.get("lon", 0.0)
-                    )
+            if db_station.latitude and db_station.longitude:
+                coords = StationCoordinates(
+                    latitude=db_station.latitude,
+                    longitude=db_station.longitude
+                )
 
             stations.append(Station(
-                id=fields.get("code_uic", str(item.get("id", ""))),
-                name=fields.get("libelle", "Unknown"),
-                uic_code=fields.get("code_uic"),
-                departement=fields.get("departement_libellemin"),
-                commune=fields.get("commune"),
+                id=db_station.uic_code,
+                name=db_station.name,
+                uic_code=db_station.uic_code,
+                departement=db_station.departement_code,
+                commune=db_station.commune,
                 coordinates=coords,
-                is_active=fields.get("fret", "O") == "O" or fields.get("voyageurs", "O") == "O"
+                is_active=db_station.is_active
             ))
 
-        total = data.get("total_count", len(stations))
         return StationList(stations=stations, total=total)
     except Exception as e:
         raise HTTPException(
@@ -80,7 +77,7 @@ async def list_stations(
 
 @router.get("/{station_id}", response_model=StationDetail, summary="Get station details")
 @limiter.limit("100/minute")
-async def get_station(station_id: str, request: Request) -> StationDetail:
+async def get_station(station_id: str, request: Request, db: Session = Depends(get_db)) -> StationDetail:
     """
     Récupère les détails d'une gare spécifique par son ID (code UIC).
 
@@ -88,43 +85,36 @@ async def get_station(station_id: str, request: Request) -> StationDetail:
     son accessibilité et les services disponibles.
     """
     try:
-        service = get_opendata_service()
-        data = service.get_stations(limit=1000)
+        db_station = db.query(DBStation).filter(DBStation.uic_code == station_id).first()
+        
+        if not db_station:
+            raise HTTPException(status_code=404, detail=f"Station {station_id} not found")
+        
+        coords = None
+        if db_station.latitude and db_station.longitude:
+            coords = StationCoordinates(
+                latitude=db_station.latitude,
+                longitude=db_station.longitude
+            )
 
-        for item in data.get("results", []):
-            record = item.get("record", {})
-            fields = record.get("fields", {})
+        services = []
+        if db_station.has_passengers:
+            services.append("Voyageurs")
+        if db_station.has_freight:
+            services.append("Fret")
 
-            if fields.get("code_uic") == station_id:
-                coords = None
-                if "coordonnees_geographiques" in fields:
-                    geo = fields["coordonnees_geographiques"]
-                    if isinstance(geo, dict):
-                        coords = StationCoordinates(
-                            latitude=geo.get("lat", 0.0),
-                            longitude=geo.get("lon", 0.0)
-                        )
-
-                services = []
-                if fields.get("voyageurs") == "O":
-                    services.append("Voyageurs")
-                if fields.get("fret") == "O":
-                    services.append("Fret")
-
-                return StationDetail(
-                    id=station_id,
-                    name=fields.get("libelle", "Unknown"),
-                    uic_code=station_id,
-                    departement=fields.get("departement_libellemin"),
-                    commune=fields.get("commune"),
-                    coordinates=coords,
-                    is_active=len(services) > 0,
-                    address=fields.get("adresse_cp"),
-                    accessibility=True,  # Info non disponible dans le dataset
-                    services=services
-                )
-
-        raise HTTPException(status_code=404, detail=f"Station {station_id} not found")
+        return StationDetail(
+            id=db_station.uic_code,
+            name=db_station.name,
+            uic_code=db_station.uic_code,
+            departement=db_station.departement_code,
+            commune=db_station.commune,
+            coordinates=coords,
+            is_active=db_station.is_active,
+            address=db_station.commune,  # Utiliser commune comme adresse
+            accessibility=True,  # Info non disponible
+            services=services
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -143,6 +133,7 @@ async def get_station(station_id: str, request: Request) -> StationDetail:
 async def get_station_delays(
     station_id: str,
     request: Request,
+    db: Session = Depends(get_db),
     days: int = Query(7, ge=1, le=30, description="Nombre de jours d'historique")
 ) -> StationDelayStats:
     """
@@ -152,47 +143,88 @@ async def get_station_delays(
     incluant le taux de ponctualité, les retards moyens et les incidents récents.
     """
     try:
-        # Récupérer les infos de la gare
-        service = get_opendata_service()
+        # Récupérer les infos de la gare depuis la DB
+        db_station = db.query(DBStation).filter(DBStation.uic_code == station_id).first()
+        
+        if not db_station:
+            raise HTTPException(status_code=404, detail=f"Station {station_id} not found")
+
         navitia = get_navitia_service()
-
-        station_name = "Unknown"
-        data = service.get_stations(limit=1000)
-        for item in data.get("results", []):
-            record = item.get("record", {})
-            fields = record.get("fields", {})
-            if fields.get("code_uic") == station_id:
-                station_name = fields.get("libelle", "Unknown")
-                break
-
-        # Simulation de données de retards (en production: interroger APIs temps réel)
+        
         period_end = datetime.now()
         period_start = period_end - timedelta(days=days)
 
-        # Générer des données simulées de retards
-        total_trains = random.randint(100, 500)
-        delayed_trains = random.randint(10, int(total_trains * 0.3))
-        avg_delay = random.uniform(5.0, 25.0)
-        max_delay = random.randint(30, 120)
-        on_time_rate = round((total_trains - delayed_trains) / total_trains * 100, 2)
-
-        # Générer quelques exemples de retards récents
+        # Récupérer les perturbations depuis Navitia pour cette gare
+        disruptions = navitia.get_disruptions()
+        
+        # Filtrer les disruptions qui affectent cette station
+        station_disruptions = []
         recent_delays = []
-        for i in range(min(5, delayed_trains)):
-            delay_time = period_end - timedelta(hours=random.randint(1, days * 24))
-            delay_mins = random.randint(5, max_delay)
-            recent_delays.append(DelayInfo(
-                train_id=f"TRAIN_{i+1}",
-                train_number=f"{random.randint(5000, 9999)}",
-                scheduled_time=delay_time,
-                actual_time=delay_time + timedelta(minutes=delay_mins),
-                delay_minutes=delay_mins,
-                status="delayed"
-            ))
+        
+        for disruption in disruptions:
+            for impacted in disruption.get("impacted_objects", []):
+                pt_object = impacted.get("pt_object", {})
+                obj_type = pt_object.get("embedded_type", "")
+                
+                if obj_type in ["stop_area", "stop_point"]:
+                    station_obj = pt_object.get(obj_type, {})
+                    station_name = station_obj.get("name", "")
+                    
+                    # Vérifier si la station correspond
+                    if station_name and db_station.name.lower() in station_name.lower():
+                        station_disruptions.append(disruption)
+                        
+                        # Extraire les informations de retard
+                        application_periods = disruption.get("application_periods", [])
+                        if application_periods:
+                            first_period = application_periods[0]
+                            begin = first_period.get("begin")
+                            
+                            if begin:
+                                try:
+                                    delay_time = datetime.fromisoformat(begin.replace("Z", "+00:00"))
+                                    
+                                    # Estimer le retard depuis la sévérité
+                                    severity = disruption.get("severity", {}).get("effect", "")
+                                    delay_mins = 0
+                                    if "significant_delays" in severity.lower():
+                                        delay_mins = 30
+                                    elif "delays" in severity.lower():
+                                        delay_mins = 15
+                                    
+                                    if delay_mins > 0 and len(recent_delays) < 5:
+                                        recent_delays.append(DelayInfo(
+                                            train_id=disruption.get("id", "")[:20],
+                                            train_number=disruption.get("id", "")[:10],
+                                            scheduled_time=delay_time,
+                                            actual_time=delay_time + timedelta(minutes=delay_mins),
+                                            delay_minutes=delay_mins,
+                                            status="delayed"
+                                        ))
+                                except:
+                                    pass
+                        break
+
+        # Calculer les statistiques à partir des disruptions réelles
+        total_disruptions = len(station_disruptions)
+        delayed_trains = total_disruptions
+        
+        # Estimer le nombre total de trains (basé sur les disruptions)
+        total_trains = max(delayed_trains * 5, 50)  # Estimation: 1 disruption pour ~5 trains
+        
+        # Calculer les moyennes
+        if recent_delays:
+            avg_delay = sum(d.delay_minutes for d in recent_delays) / len(recent_delays)
+            max_delay = max(d.delay_minutes for d in recent_delays)
+        else:
+            avg_delay = 0
+            max_delay = 0
+        
+        on_time_rate = round((total_trains - delayed_trains) / total_trains * 100, 2) if total_trains > 0 else 100.0
 
         return StationDelayStats(
             station_id=station_id,
-            station_name=station_name,
+            station_name=db_station.name,
             period_start=period_start,
             period_end=period_end,
             total_trains=total_trains,
@@ -202,6 +234,8 @@ async def get_station_delays(
             on_time_rate=on_time_rate,
             recent_delays=recent_delays
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=503,

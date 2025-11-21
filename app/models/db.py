@@ -92,7 +92,6 @@ class Line(Base):
 
     # Relations
     trains = relationship("Train", back_populates="line")
-    incidents = relationship("Incident", back_populates="line")
     line_stats = relationship("LineStat", back_populates="line")
 
 
@@ -118,26 +117,8 @@ class Train(Base):
     line = relationship("Line", back_populates="trains")
 
 
-class Incident(Base):
-    """Major incidents and disruptions."""
-
-    __tablename__ = "incidents"
-
-    id = Column(Integer, primary_key=True, index=True)
-    incident_id = Column(String(100), unique=True, nullable=False, index=True)
-    line_code = Column(String(200), ForeignKey("lines.line_code"), nullable=True)
-    title = Column(String(500), nullable=False)
-    description = Column(Text, nullable=True)
-    severity = Column(String(20), nullable=False, index=True)  # info, warning, major, critical
-    category = Column(String(100), nullable=True)
-    status = Column(String(50), default="active")  # active, resolved
-    start_date = Column(DateTime(timezone=True), nullable=True)
-    end_date = Column(DateTime(timezone=True), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime(timezone=True), onupdate=lambda: datetime.now(timezone.utc))
-
-    # Relations
-    line = relationship("Line", back_populates="incidents")
+# NOTE: Incidents/Disruptions are fetched directly from Navitia API in real-time
+# No database model needed for incidents
 
 
 class StationDelayStat(Base):

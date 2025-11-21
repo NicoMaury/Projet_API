@@ -2,7 +2,6 @@
 
 from datetime import datetime, timedelta
 from typing import Optional
-import random
 
 from fastapi import APIRouter, Depends, Request, HTTPException, Query
 
@@ -60,7 +59,7 @@ async def get_major_alerts(
 
             # Extraire les périodes d'application
             application_periods = disruption.get("application_periods", [])
-            start_time = now - timedelta(hours=random.randint(1, 48))
+            start_time = now
             end_time = None
             is_active = True
 
@@ -116,45 +115,6 @@ async def get_major_alerts(
                 created_at=start_time,
                 updated_at=disruption.get("updated_at")
             ))
-
-        # Si aucune alerte réelle, générer quelques exemples pour démonstration
-        if not alerts:
-            sample_alerts = [
-                Alert(
-                    id="ALERT_DEMO_1",
-                    title="Travaux programmés ligne Paris-Lyon",
-                    description="Travaux de maintenance sur la voie. Circulation perturbée entre 22h et 6h.",
-                    severity=AlertSeverity.WARNING,
-                    affected_lines=["TGV Paris-Lyon"],
-                    affected_stations=["Gare de Lyon", "Lyon Part-Dieu"],
-                    start_time=now - timedelta(hours=2),
-                    end_time=now + timedelta(hours=4),
-                    is_active=True,
-                    created_at=now - timedelta(days=7),
-                    updated_at=now - timedelta(hours=2)
-                ),
-                Alert(
-                    id="ALERT_DEMO_2",
-                    title="Incident technique gare Montparnasse",
-                    description="Problème d'aiguillage résolu. Retards de 15-20 minutes attendus.",
-                    severity=AlertSeverity.MAJOR,
-                    affected_lines=["TGV Atlantique", "TER Bretagne"],
-                    affected_stations=["Gare Montparnasse"],
-                    start_time=now - timedelta(hours=3),
-                    end_time=now + timedelta(hours=1),
-                    is_active=True,
-                    created_at=now - timedelta(hours=3),
-                    updated_at=now - timedelta(minutes=30)
-                )
-            ]
-
-            if active_only:
-                alerts = [a for a in sample_alerts if a.is_active]
-            else:
-                alerts = sample_alerts
-
-            if severity:
-                alerts = [a for a in alerts if a.severity == severity]
 
         return AlertList(alerts=alerts, total=len(alerts))
     except Exception as e:

@@ -1,11 +1,13 @@
 """Departements endpoints."""
 
 from fastapi import APIRouter, Depends, Request, HTTPException
+from sqlalchemy.orm import Session
 
 from app.core.rate_limit import limiter
 from app.core.security import require_keycloak_token
+from app.core.database import get_db
+from app.models.db import Departement as DBDepartement
 from app.models.schemas import DepartementList, Departement
-from app.services.opendatasoft_service import get_opendatasoft_service
 
 
 router = APIRouter(
@@ -17,26 +19,24 @@ router = APIRouter(
 
 @router.get("/", response_model=DepartementList, summary="List departements")
 @limiter.limit("100/minute")
-async def list_departements(request: Request) -> DepartementList:
+async def list_departements(request: Request, db: Session = Depends(get_db)) -> DepartementList:
     """
-    Récupère la liste de tous les départements français.
+    Récupère la liste de tous les départements français depuis la base de données.
 
     Cette endpoint retourne les informations sur tous les départements administratifs
     de France, avec leurs régions associées si disponibles.
     """
     try:
-        service = get_opendatasoft_service()
-        raw_depts = service.get_departements()
+        db_departements = db.query(DBDepartement).order_by(DBDepartement.nom).all()
 
         departements = []
-        for item in raw_depts:
-            # Structure simplifiée directe
+        for db_dept in db_departements:
             departements.append(Departement(
-                id=item.get("code", ""),
-                name=item.get("nom", "Unknown"),
-                code=item.get("code", ""),
-                region_id=item.get("code_region"),
-                region_name=item.get("nom_region")
+                id=db_dept.code,
+                name=db_dept.nom,
+                code=db_dept.code,
+                region_id=db_dept.region_code,
+                region_name=db_dept.region.nom if db_dept.region else None
             ))
 
         return DepartementList(departements=departements, total=len(departements))

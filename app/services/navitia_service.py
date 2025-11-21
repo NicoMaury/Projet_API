@@ -123,6 +123,14 @@ class NavitiaService:
         except Exception:
             return []
 
+    def get_line_routes(self, line_id: str) -> List[Dict[str, Any]]:
+        """Get routes (with stop points) for a specific line."""
+        try:
+            data = self.get(f"coverage/sncf/lines/{line_id}/routes")
+            return data.get("routes", [])
+        except Exception:
+            return []
+
 
 @lru_cache(maxsize=1)
 def get_navitia_service() -> NavitiaService:
