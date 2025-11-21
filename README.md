@@ -22,8 +22,8 @@ pip install -r requirements.txt
 
 # 2. Le fichier .env est déjà créé avec les valeurs par défaut
 
-# 3. Lancer l'API (sans Docker, sans authentification pour tester)
-uvicorn app.main:app --reload
+# 3. Lancer l'API
+python start.py
 ```
 
 **🎉 C'est prêt !** Ouvrez http://localhost:8000/docs
@@ -140,7 +140,7 @@ Projet_API/
 
 ```bash
 # 1. Démarrer PostgreSQL et Keycloak
-./start-docker.sh
+docker-compose up -d
 
 # 2. Installer les dépendances Python
 python -m venv .venv
@@ -152,7 +152,7 @@ cp .env.example .env
 nano .env  # Éditer avec les URLs Docker
 
 # 4. Démarrer l'API
-fastapi dev app/main.py
+python start.py
 ```
 
 **URLs Docker par défaut :**
@@ -321,7 +321,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ```bash
 # Démarrer l'environnement Docker
-./start-docker.sh
+docker-compose up -d
 
 # Arrêter Docker
 docker-compose down
@@ -329,8 +329,8 @@ docker-compose down
 # Activer l'environnement Python
 source .venv/bin/activate
 
-# Démarrer l'API en mode développement
-fastapi dev app/main.py
+# Démarrer l'API
+python start.py
 
 # Voir les logs PostgreSQL
 docker-compose logs -f postgres
@@ -370,7 +370,7 @@ Les contributions sont bienvenues ! Domaines d'amélioration :
 
 **Développé avec FastAPI, Keycloak et PostgreSQL**
 
-[Documentation](API_ENDPOINTS.md) • [Guide Docker](DOCKER_GUIDE.md) • [Installation](GUIDE_INSTALLATION.md)
+Documentation complète disponible dans le dossier du projet
 
 </div>
 
