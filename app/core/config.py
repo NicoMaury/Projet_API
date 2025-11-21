@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     KEYCLOAK_JWKS_URL: AnyHttpUrl = Field(..., env="KEYCLOAK_JWKS_URL")
     KEYCLOAK_AUDIENCE: str = Field(..., env="KEYCLOAK_AUDIENCE")
     KEYCLOAK_ISSUER: AnyHttpUrl = Field(..., env="KEYCLOAK_ISSUER")
+    KEYCLOAK_CLIENT_SECRET: Optional[str] = Field(None, env="KEYCLOAK_CLIENT_SECRET")
 
     # SNCF Data sources
     SNCF_DATASET_URL: AnyHttpUrl = Field(

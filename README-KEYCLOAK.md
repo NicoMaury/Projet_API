@@ -199,22 +199,70 @@ python start.py
 
 **Toutes les routes nécessitent un token JWT Keycloak valide.**
 
-### Obtenir un token
+### 📝 Configuration Keycloak
+
+> **✅ Configuration pré-existante** : Le realm `rail` et le client `rail-traffic-api` sont déjà configurés dans Keycloak.  
+> Il ne reste qu'à **récupérer le client secret**.
+
+#### Étape 1 : Démarrer Keycloak
+
+```bash
+# Démarrer Keycloak via Docker
+docker-compose up -d keycloak
+
+# Attendre que Keycloak soit prêt (30-60 secondes)
+docker-compose logs -f keycloak
+```
+
+#### Étape 2 : Récupérer le Client Secret
+
+1. Ouvrez http://localhost:8080
+2. Connectez-vous avec les identifiants :
+   - **Username** : `admin`
+   - **Password** : `admin`
+3. Sélectionnez le realm **"rail"** (menu déroulant en haut à gauche)
+4. Dans le menu de gauche, cliquez sur **"Clients"**
+5. Cliquez sur **"rail-traffic-api"** dans la liste
+6. Allez dans l'onglet **"Credentials"**
+7. Copiez le **"Client secret"** affiché
+8. Ajoutez-le dans votre fichier `.env`
+
+---
+
+### 🔑 Obtenir un token d'authentification OAuth2
+
+L'API utilise le flux **Client Credentials** (OAuth2 machine-to-machine).
 
 ```bash
 curl -X POST 'http://localhost:8080/realms/rail/protocol/openid-connect/token' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d 'client_id=rail-traffic-api' \
-  -d 'client_secret=VOTRE_SECRET' \
-  -d 'grant_type=password' \
-  -d 'username=testuser' \
-  -d 'password=password'
+  -d 'client_secret=VOTRE_CLIENT_SECRET' \
+  -d 'grant_type=client_credentials'
 ```
 
-### Utiliser le token
+**Réponse attendue :**
+
+```json
+{
+  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expires_in": 300,
+  "token_type": "Bearer"
+}
+```
+
+### 🚀 Utiliser le token
 
 ```bash
-export TOKEN="votre_access_token"
+# Extraire et exporter le token
+export TOKEN=$(curl -s -X POST 'http://localhost:8080/realms/rail/protocol/openid-connect/token' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'client_id=rail-traffic-api' \
+  -d 'client_secret=VOTRE_CLIENT_SECRET' \
+  -d 'grant_type=client_credentials' | python3 -m json.tool | grep access_token | cut -d'"' -f4)
+
+# Utiliser le token dans vos requêtes
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/regions
 curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/stations
 ```
 
