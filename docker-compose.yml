@@ -1,87 +1,50 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: rail_postgres
-    restart: unless-stopped
+  db:
+    image: postgres:15
     environment:
-      POSTGRES_DB: rail_analytics
-      POSTGRES_USER: rail_user
-      POSTGRES_PASSWORD: rail_password
-      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: rail_traffic_db
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
-    networks:
-      - rail_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U rail_user -d rail_analytics"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U user -d rail_traffic_db"]
+      interval: 5s
       timeout: 5s
       retries: 5
 
-  # Keycloak Authentication Server
-  keycloak:
-    image: quay.io/keycloak/keycloak:23.0
-    container_name: rail_keycloak
-    restart: unless-stopped
-    environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-      KC_DB: dev-file
-      KC_HTTP_PORT: 8080
-      KC_HOSTNAME_STRICT: false
-      KC_HOSTNAME_STRICT_HTTPS: false
-      KC_HTTP_ENABLED: true
-    command:
-      - start-dev
-      - --health-enabled=true
-    ports:
-      - "8080:8080"
-    volumes:
-      - keycloak_data:/opt/keycloak/data
-    networks:
-      - rail_network
-    healthcheck:
-      test:
-        - CMD-SHELL
-        - /opt/keycloak/bin/kcadm.sh config credentials --config /tmp/healthcheck.config --server http://localhost:8080 --realm master --user $$KEYCLOAK_ADMIN --password $$KEYCLOAK_ADMIN_PASSWORD >/dev/null 2>&1
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  # PostgreSQL Admin Interface (optionnel)
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: rail_pgadmin
-    restart: unless-stopped
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@rail.local
-      PGADMIN_DEFAULT_PASSWORD: admin
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
-      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
-    ports:
-      - "5050:80"
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
-    networks:
-      - rail_network
+  importer:
+    build: .
     depends_on:
-      - postgres
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_NAME: rail_traffic_db
+      DB_USER: user
+      DB_PASSWORD: password
+    volumes:
+      - .:/app
 
-networks:
-  rail_network:
-    driver: bridge
+  api:
+    build: .
+    command: uvicorn api:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_NAME: rail_traffic_db
+      DB_USER: user
+      DB_PASSWORD: password
+    volumes:
+      - .:/app
 
 volumes:
   postgres_data:
-    driver: local
-  pgadmin_data:
-    driver: local
-  keycloak_data:
-    driver: local
-
