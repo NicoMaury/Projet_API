@@ -3,7 +3,8 @@
 from functools import lru_cache
 from typing import Optional
 
-from pydantic import AnyHttpUrl, AnyUrl, BaseSettings, Field
+from pydantic import AnyHttpUrl, Field
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -40,14 +41,15 @@ class Settings(BaseSettings):
     )
 
     REQUEST_TIMEOUT_SECONDS: float = Field(10.0, env="REQUEST_TIMEOUT_SECONDS")
-    DATABASE_URL: AnyUrl = Field(
+    DATABASE_URL: str = Field(
         "postgresql+psycopg://rail_user:rail_password@localhost:5432/rail_analytics",
         env="DATABASE_URL",
     )
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8"
+    }
 
 
 @lru_cache(maxsize=1)

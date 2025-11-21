@@ -10,6 +10,29 @@
 
 ---
 
+## ⚡ Démarrage Ultra Rapide
+
+```bash
+# 1. Cloner et installer
+git clone https://github.com/votre-repo/Projet_API.git
+cd Projet_API
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# 2. Le fichier .env est déjà créé avec les valeurs par défaut
+
+# 3. Lancer l'API (sans Docker, sans authentification pour tester)
+uvicorn app.main:app --reload
+```
+
+**🎉 C'est prêt !** Ouvrez http://localhost:8000/docs
+
+> **Note:** Par défaut, l'authentification Keycloak est désactivée en mode développement pour faciliter les tests.
+> Pour activer la sécurité complète, suivez la section [Configuration Keycloak](#-authentification).
+
+---
+
 ## 📋 Table des matières
 
 - [Vue d'ensemble](#-vue-densemble)
