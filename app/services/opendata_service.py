@@ -32,15 +32,56 @@ class OpenDataService:
         """Fetch stations from liste-des-gares dataset."""
         try:
             params = {"limit": limit, "offset": offset}
-            return self.get("catalog/datasets/liste-des-gares/records", params=params)
-        except Exception:
+            response = self.get("catalog/datasets/liste-des-gares/records", params=params)
+
+            # La structure réelle de l'API SNCF v2.1 retourne directement les fields
+            # Normaliser la structure pour qu'elle soit compatible avec le code existant
+            if "results" in response:
+                normalized_results = []
+                for item in response["results"]:
+                    # Si les données sont directement dans item, on les encapsule
+                    if "libelle" in item:  # Structure directe
+                        normalized_results.append({
+                            "id": item.get("code_uic", ""),
+                            "record": {
+                                "fields": item
+                            }
+                        })
+                    else:  # Structure déjà encapsulée
+                        normalized_results.append(item)
+
+                return {
+                    "results": normalized_results,
+                    "total_count": response.get("total_count", len(normalized_results))
+                }
+            return response
+        except Exception as e:
+            print(f"Error fetching stations: {e}")
             return {"results": [], "total_count": 0}
 
     def search_stations(self, query: str, limit: int = 20) -> Dict[str, Any]:
         """Search stations by name."""
         try:
             params = {"where": f"libelle like '{query}'", "limit": limit}
-            return self.get("catalog/datasets/liste-des-gares/records", params=params)
+            response = self.get("catalog/datasets/liste-des-gares/records", params=params)
+
+            # Normaliser la structure comme pour get_stations
+            if "results" in response:
+                normalized_results = []
+                for item in response["results"]:
+                    if "libelle" in item:
+                        normalized_results.append({
+                            "id": item.get("code_uic", ""),
+                            "record": {"fields": item}
+                        })
+                    else:
+                        normalized_results.append(item)
+
+                return {
+                    "results": normalized_results,
+                    "total_count": response.get("total_count", len(normalized_results))
+                }
+            return response
         except Exception:
             return {"results": [], "total_count": 0}
 

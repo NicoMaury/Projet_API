@@ -1,24 +1,6 @@
 -- Script d'initialisation PostgreSQL
 -- Créé automatiquement au démarrage du conteneur
 
--- Créer la base de données Keycloak
-SELECT 'CREATE DATABASE keycloak'
-WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'keycloak')\gexec
-
--- Créer l'utilisateur Keycloak
-DO
-$do$
-BEGIN
-   IF NOT EXISTS (
-      SELECT FROM pg_catalog.pg_roles
-      WHERE rolname = 'keycloak_user') THEN
-      CREATE USER keycloak_user WITH PASSWORD 'keycloak_password';
-   END IF;
-END
-$do$;
-
--- Donner les privilèges
-GRANT ALL PRIVILEGES ON DATABASE keycloak TO keycloak_user;
 
 -- Se connecter à la base rail_analytics
 \c rail_analytics

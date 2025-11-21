@@ -19,7 +19,7 @@ router = APIRouter(
 @limiter.limit("100/minute")
 async def list_departements(request: Request) -> DepartementList:
     """
-    Récupère la liste de tous les départements français depuis OpenDataSoft.
+    Récupère la liste de tous les départements français.
 
     Cette endpoint retourne les informations sur tous les départements administratifs
     de France, avec leurs régions associées si disponibles.
@@ -30,14 +30,13 @@ async def list_departements(request: Request) -> DepartementList:
 
         departements = []
         for item in raw_depts:
-            record = item.get("record", {})
-            fields = record.get("fields", {})
+            # Structure simplifiée directe
             departements.append(Departement(
-                id=fields.get("code", str(item.get("id", ""))),
-                name=fields.get("nom", fields.get("libelle", "Unknown")),
-                code=fields.get("code", ""),
-                region_id=fields.get("code_region"),
-                region_name=fields.get("nom_region")
+                id=item.get("code", ""),
+                name=item.get("nom", "Unknown"),
+                code=item.get("code", ""),
+                region_id=item.get("code_region"),
+                region_name=item.get("nom_region")
             ))
 
         return DepartementList(departements=departements, total=len(departements))

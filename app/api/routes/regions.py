@@ -19,7 +19,7 @@ router = APIRouter(
 @limiter.limit("100/minute")
 async def list_regions(request: Request) -> RegionList:
     """
-    Récupère la liste de toutes les régions françaises depuis OpenDataSoft.
+    Récupère la liste de toutes les régions françaises.
 
     Cette endpoint retourne les informations sur toutes les régions administratives
     de France, utile pour filtrer les données ferroviaires par région.
@@ -30,12 +30,11 @@ async def list_regions(request: Request) -> RegionList:
 
         regions = []
         for item in raw_regions:
-            record = item.get("record", {})
-            fields = record.get("fields", {})
+            # Structure simplifiée directe
             regions.append(Region(
-                id=fields.get("code", str(item.get("id", ""))),
-                name=fields.get("nom", fields.get("libelle", "Unknown")),
-                code=fields.get("code")
+                id=item.get("code", ""),
+                name=item.get("nom", "Unknown"),
+                code=item.get("code")
             ))
 
         return RegionList(regions=regions, total=len(regions))
