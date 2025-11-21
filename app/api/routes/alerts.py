@@ -44,7 +44,8 @@ async def get_major_alerts(
         for idx, disruption in enumerate(disruptions):
             # Déterminer la sévérité
             severity_value = AlertSeverity.INFO
-            impact = disruption.get("severity", {}).get("effect", "").lower()
+            severity_obj = disruption.get("severity", {})
+            impact = severity_obj.get("effect", "").lower() if isinstance(severity_obj, dict) else ""
 
             if "blocked" in impact or "no_service" in impact:
                 severity_value = AlertSeverity.CRITICAL
@@ -56,6 +57,36 @@ async def get_major_alerts(
             # Filtrer par sévérité si demandé
             if severity and severity_value != severity:
                 continue
+
+            # Extraire le titre et la description
+            # Navitia peut avoir: cause, messages, contributor
+            title = ""
+            description = ""
+            
+            # Essayer d'extraire le cause (peut être un objet avec 'label')
+            cause_obj = disruption.get("cause")
+            if isinstance(cause_obj, dict):
+                title = cause_obj.get("label", "")
+            elif isinstance(cause_obj, str):
+                title = cause_obj
+            
+            # Essayer d'extraire les messages
+            messages = disruption.get("messages", [])
+            if messages and isinstance(messages, list):
+                for msg in messages:
+                    if isinstance(msg, dict):
+                        text = msg.get("text", "")
+                        if text:
+                            description = text
+                            break
+            
+            # Fallback si pas de description
+            if not description:
+                description = disruption.get("message", "Incident signalé sur le réseau")
+            
+            # Fallback si pas de titre
+            if not title:
+                title = severity_obj.get("name", "Perturbation en cours") if isinstance(severity_obj, dict) else "Perturbation en cours"
 
             # Extraire les périodes d'application
             application_periods = disruption.get("application_periods", [])
@@ -70,16 +101,24 @@ async def get_major_alerts(
 
                 if begin:
                     try:
-                        start_time = datetime.fromisoformat(begin.replace("Z", "+00:00"))
+                        # Format Navitia: YYYYMMDDTHHMMSS
+                        start_time = datetime.strptime(begin, "%Y%m%dT%H%M%S")
                     except:
-                        pass
+                        try:
+                            start_time = datetime.fromisoformat(begin.replace("Z", "+00:00"))
+                        except:
+                            pass
 
                 if end:
                     try:
-                        end_time = datetime.fromisoformat(end.replace("Z", "+00:00"))
+                        end_time = datetime.strptime(end, "%Y%m%dT%H%M%S")
                         is_active = end_time > now
                     except:
-                        pass
+                        try:
+                            end_time = datetime.fromisoformat(end.replace("Z", "+00:00"))
+                            is_active = end_time > now
+                        except:
+                            pass
 
             # Filtrer si on veut seulement les alertes actives
             if active_only and not is_active:
@@ -89,23 +128,51 @@ async def get_major_alerts(
             affected_lines = []
             affected_stations = []
 
-            for impacted in disruption.get("impacted_objects", []):
+            impacted_objects = disruption.get("impacted_objects", [])
+            for impacted in impacted_objects:
+                # L'objet impacté peut avoir plusieurs formats
                 pt_object = impacted.get("pt_object", {})
-                obj_type = pt_object.get("embedded_type", "")
+                
+                # Vérifier le type d'objet
+                obj_id = pt_object.get("id", "")
+                obj_name = pt_object.get("name", "")
+                embedded_type = pt_object.get("embedded_type", "")
+                
+                # Extraire les lignes
+                if embedded_type == "line" or "line" in obj_id.lower():
+                    line_obj = pt_object.get("line", {})
+                    if isinstance(line_obj, dict):
+                        line_name = line_obj.get("name", obj_name)
+                        if line_name:
+                            affected_lines.append(line_name)
+                    elif obj_name:
+                        affected_lines.append(obj_name)
+                
+                # Extraire les stations
+                elif embedded_type in ["stop_area", "stop_point"]:
+                    stop_obj = pt_object.get(embedded_type, {})
+                    if isinstance(stop_obj, dict):
+                        station_name = stop_obj.get("name", obj_name)
+                        if station_name:
+                            affected_stations.append(station_name)
+                    elif obj_name:
+                        affected_stations.append(obj_name)
 
-                if obj_type == "line":
-                    line_name = pt_object.get("line", {}).get("name", "")
-                    if line_name:
-                        affected_lines.append(line_name)
-                elif obj_type in ["stop_area", "stop_point"]:
-                    station_name = pt_object.get(obj_type, {}).get("name", "")
-                    if station_name:
-                        affected_stations.append(station_name)
+            # Parser le updated_at de Navitia (format: YYYYMMDDTHHMMSS)
+            updated_at = start_time
+            updated_at_str = disruption.get("updated_at")
+            if updated_at_str:
+                try:
+                    # Format Navitia: 20251121T145715
+                    updated_at = datetime.strptime(updated_at_str, "%Y%m%dT%H%M%S")
+                except:
+                    # Si le parsing échoue, utiliser start_time
+                    updated_at = start_time
 
             alerts.append(Alert(
                 id=disruption.get("id", f"ALERT_{idx}"),
-                title=disruption.get("cause", "Perturbation en cours"),
-                description=disruption.get("message", "Incident signalé sur le réseau"),
+                title=title or "Perturbation",
+                description=description or "Incident signalé sur le réseau",
                 severity=severity_value,
                 affected_lines=list(set(affected_lines))[:10],  # Limiter à 10
                 affected_stations=list(set(affected_stations))[:10],
@@ -113,7 +180,7 @@ async def get_major_alerts(
                 end_time=end_time,
                 is_active=is_active,
                 created_at=start_time,
-                updated_at=disruption.get("updated_at")
+                updated_at=updated_at
             ))
 
         return AlertList(alerts=alerts, total=len(alerts))
