@@ -25,14 +25,32 @@ class KeycloakTokenVerifier:
 
         try:
             signing_key = self._jwks_client.get_signing_key_from_jwt(token)
-            payload = jwt.decode(
-                token,
-                signing_key.key,
-                algorithms=["RS256"],
-                audience=self._audience,
-                issuer=self._issuer,
-                options={"require": ["exp", "iss", "aud"]},
-            )
+
+            # Première tentative : validation standard avec audience
+            try:
+                payload = jwt.decode(
+                    token,
+                    signing_key.key,
+                    algorithms=["RS256"],
+                    audience=self._audience,
+                    issuer=self._issuer,
+                    options={"require": ["exp", "iss"]},
+                )
+            except InvalidTokenError:
+                # Deuxième tentative : sans vérification d'audience (Keycloak met le client_id dans 'azp')
+                payload = jwt.decode(
+                    token,
+                    signing_key.key,
+                    algorithms=["RS256"],
+                    issuer=self._issuer,
+                    options={"require": ["exp", "iss"], "verify_aud": False},
+                )
+
+                # Vérifier manuellement que azp correspond au client attendu
+                azp = payload.get("azp", "")
+                if azp != self._audience:
+                    raise InvalidTokenError(f"Invalid authorized party: expected {self._audience}, got {azp}")
+
         except InvalidTokenError as exc:  # pragma: no cover - defensive
             raise HTTPException(status_code=401, detail="Invalid authorization token") from exc
 

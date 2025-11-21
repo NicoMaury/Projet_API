@@ -1,5 +1,6 @@
 """Rail Traffic Analytics FastAPI entrypoint."""
 
+import asyncio
 import logging
 import time
 
@@ -12,6 +13,7 @@ from app.core.config import get_settings
 from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 from app.core.database import SessionLocal, init_db
 from app.models.db import RequestLog
+from app.tasks.sync_data import sync_all_data
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +27,12 @@ def create_application() -> FastAPI:
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
     app.add_middleware(SlowAPIMiddleware)
+
+    @app.on_event("startup")
+    async def startup_event():
+        """Synchronise les données au démarrage de l'application."""
+        logger.info("🚀 Démarrage de l'application...")
+        asyncio.create_task(sync_all_data())
 
     @app.middleware("http")
     async def log_requests(request: Request, call_next):

@@ -12,6 +12,10 @@
 *.pfx
 secrets/
 credentials/
+.keycloak_secret
+
+# Scripts shell (utiliser Python à la place)
+*.sh
 
 # ===== Python =====
 # Bytecode

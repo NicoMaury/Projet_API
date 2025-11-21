@@ -1,6 +1,6 @@
 # 🚆 Rail Traffic Analytics
 
-> **API REST sophistiquée pour l'analyse et le suivi du trafic ferroviaire français en temps réel**
+> **API REST sophistiquée pour l'analyse et le suivi du trafic ferroviaire français SNCF en temps réel**
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688?style=flat&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat&logo=python)](https://www.python.org/)
@@ -10,202 +10,91 @@
 
 ---
 
+## 🎯 Fonctionnalités Principales
+
+| Fonctionnalité | Description |
+|----------------|-------------|
+| 🚄 **Temps Réel** | Suivi des trains, retards et suppressions en direct |
+| 🗺️ **Réseau Complet** | 6000+ gares, toutes les lignes SNCF |
+| 📊 **Statistiques** | Analyses détaillées par ligne et par gare |
+| ⚠️ **Alertes** | Détection et historique des incidents majeurs |
+| 🔒 **Sécurisé** | OAuth2 avec Keycloak + Rate limiting (100 req/min) |
+| 🐘 **PostgreSQL** | Base de données robuste et performante |
+
+---
+
 ## ⚡ Démarrage Ultra Rapide
 
+### Prérequis
+
+- **Python 3.10+**
+- **Docker & Docker Compose**
+- **Git**
+
+### Installation en 5 étapes
+
 ```bash
-# 1. Cloner et installer
-git clone https://github.com/votre-repo/Projet_API.git
+# 1️⃣ Cloner le projet
+git clone <votre-repo-url>
 cd Projet_API
+
+# 2️⃣ Démarrer PostgreSQL et Keycloak
+docker compose up -d
+
+# 3. Créer l'environnement virtuel Python
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate  # Sur Windows: .venv\Scripts\activate
+
+# 4. Installer les dépendances
 pip install -r requirements.txt
 
-# 2. Le fichier .env est déjà créé avec les valeurs par défaut
+# 5. Configurer Keycloak automatiquement
+python setup_keycloak.py
 
-# 3. Lancer l'API
+# 6. Lancer l'API (synchronisation automatique des données)
 python start.py
 ```
+
+> **⚠️ Important** : Tous les scripts Python (`setup_keycloak.py`, `get_token.py`, `start.py`, etc.) doivent être lancés avec l'environnement virtuel activé (`source .venv/bin/activate`).
 
 **🎉 C'est prêt !** Ouvrez http://localhost:8000/docs
 
-> **Note:** Par défaut, l'authentification Keycloak est désactivée en mode développement pour faciliter les tests.
-> Pour activer la sécurité complète, suivez la section [Configuration Keycloak](#-authentification).
-
 ---
 
-## 📋 Table des matières
+## 📊 Vérifier les Données Synchronisées
 
-- [Vue d'ensemble](#-vue-densemble)
-- [Fonctionnalités](#-fonctionnalités)
-- [Architecture](#-architecture)
-- [Installation rapide](#-installation-rapide)
-- [Endpoints de l'API](#-endpoints-de-lapi)
-- [Configuration](#-configuration)
-- [Documentation](#-documentation)
-- [Sécurité](#-sécurité)
-
----
-
-## 🎯 Vue d'ensemble
-
-Rail Traffic Analytics est une solution complète pour analyser le réseau ferroviaire SNCF. L'API s'appuie sur trois sources de données officielles (SNCF Open Data, Navitia.io, OpenDataSoft) pour fournir :
-
-- 📊 **Statistiques en temps réel** : Retards, suppressions, incidents
-- 🚉 **Informations géographiques** : 3000+ gares, 100+ lignes
-- 🚨 **Système d'alertes** : Détection et classification des incidents
-- 📈 **Analyses avancées** : Performance par ligne et par gare
-
----
-
-## ✨ Fonctionnalités
-
-### Analyse en Temps Réel
-- ✅ Import automatique des horaires SNCF
-- ✅ Détection instantanée des retards
-- ✅ Vision précise du trafic ferroviaire
-
-### Détection d'Incidents
-- ✅ Système intelligent via Navitia.io
-- ✅ Classification par sévérité (info, warning, major, critical)
-- ✅ Historisation complète dans PostgreSQL
-
-### Statistiques Avancées
-- ✅ Analyses par ligne avec taux de ponctualité
-- ✅ Analyses par gare avec historique des retards
-- ✅ Vue d'ensemble globale du réseau
-
-### Sécurité & Performance
-- ✅ Authentification OAuth2 obligatoire (Keycloak)
-- ✅ Rate limiting : 100 requêtes/minute/utilisateur
-- ✅ Journalisation automatique de toutes les requêtes
-
----
-
-## 🏗️ Architecture
-
-### Stack Technique
-
-```
-┌─────────────────────────────────────────────┐
-│           FastAPI Application               │
-│  ┌────────────┐  ┌──────────┐  ┌─────────┐ │
-│  │   Routes   │  │ Services │  │  Models │ │
-│  └────────────┘  └──────────┘  └─────────┘ │
-└─────────────────────────────────────────────┘
-         │              │              │
-         ▼              ▼              ▼
-┌──────────────┐ ┌──────────┐ ┌──────────────┐
-│   Keycloak   │ │   APIs   │ │  PostgreSQL  │
-│    OAuth2    │ │  Externe │ │   Database   │
-└──────────────┘ └──────────┘ └──────────────┘
-```
-
-### Structure du Projet
-
-```
-Projet_API/
-├── app/
-│   ├── api/
-│   │   └── routes/          # 12 endpoints REST
-│   │       ├── alerts.py    # Alertes majeures
-│   │       ├── departements.py
-│   │       ├── lines.py     # Lignes ferroviaires
-│   │       ├── regions.py
-│   │       ├── stations.py  # Gares SNCF
-│   │       ├── stats.py     # Statistiques globales
-│   │       └── trains.py    # Trains en circulation
-│   ├── core/
-│   │   ├── config.py        # Configuration Pydantic
-│   │   ├── database.py      # SQLAlchemy
-│   │   ├── rate_limit.py    # SlowAPI
-│   │   └── security.py      # Validation JWT
-│   ├── models/
-│   │   ├── db.py           # Modèles base de données
-│   │   └── schemas.py      # 33 schémas Pydantic
-│   ├── services/
-│   │   ├── navitia_service.py
-│   │   ├── opendata_service.py
-│   │   └── opendatasoft_service.py
-│   └── main.py
-├── docker-compose.yml       # 🐳 PostgreSQL + Keycloak
-├── .env.example
-└── requirements.txt
-```
-
----
-
-## 🚀 Installation rapide
-
-### Option 1 : Avec Docker (Recommandé)
+Après le démarrage, l'API charge automatiquement :
 
 ```bash
-# 1. Démarrer PostgreSQL et Keycloak
-docker-compose up -d
-
-# 2. Installer les dépendances Python
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-
-# 3. Configurer l'environnement
-cp .env.example .env
-nano .env  # Éditer avec les URLs Docker
-
-# 4. Démarrer l'API
-python start.py
+# Test rapide de synchronisation
+python test_sync.py
 ```
 
-**URLs Docker par défaut :**
-- Keycloak : http://localhost:8080 (admin/admin)
-- PostgreSQL : localhost:5432 (rail_user/rail_password)
-- pgAdmin : http://localhost:5050 (admin@rail.local/admin)
+**Résultat attendu :**
+```
+✅ 13 régions synchronisées
+✅ 5 départements synchronisés
+✅ 6000+ gares synchronisées
+✅ 25+ lignes synchronisées
+✅ 120+ trains synchronisés
+✅ 25+ alertes synchronisées
+```
 
 ---
 
-## 📡 Endpoints de l'API
+## 🔑 Authentification OAuth2
 
-### Consultation (8 endpoints)
-
-| Méthode | Endpoint | Description |
-|---------|----------|-------------|
-| GET | `/regions` | Liste des régions françaises |
-| GET | `/departements` | Liste des départements |
-| GET | `/stations` | Toutes les gares SNCF (pagination) |
-| GET | `/stations/{id}` | Détails d'une gare |
-| GET | `/lines` | Lignes ferroviaires (filtrage) |
-| GET | `/lines/{id}` | Détails d'une ligne |
-| GET | `/trains` | Trains en circulation |
-| GET | `/trains/{id}` | Détails d'un train avec arrêts |
-
-### Statistiques (3 endpoints)
-
-| Méthode | Endpoint | Description |
-|---------|----------|-------------|
-| GET | `/stations/{id}/delays` | Analyse des retards par gare |
-| GET | `/lines/{id}/stats` | Performances par ligne |
-| GET | `/stats/overview` | Vue d'ensemble du réseau |
-
-### Alertes (1 endpoint)
-
-| Méthode | Endpoint | Description |
-|---------|----------|-------------|
-| GET | `/alerts/major` | Alertes et incidents majeurs |
-
-📖 **Documentation complète** : [API_ENDPOINTS.md](API_ENDPOINTS.md)
-
----
-
-## 🔐 Authentification
-
-**Toutes les routes nécessitent un token JWT Keycloak valide.**
-
-### Obtenir un token
+### Obtenir un token rapidement
 
 ```bash
+# Méthode 1 : Script automatique
+python get_token.py
+
+# Méthode 2 : Commande manuelle
 curl -X POST 'http://localhost:8080/realms/rail/protocol/openid-connect/token' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d 'client_id=rail-traffic-api' \
-  -d 'client_secret=VOTRE_SECRET' \
+  -d 'client_secret=<voir .keycloak_secret>' \
   -d 'grant_type=password' \
   -d 'username=testuser' \
   -d 'password=password'
@@ -215,162 +104,369 @@ curl -X POST 'http://localhost:8080/realms/rail/protocol/openid-connect/token' \
 
 ```bash
 export TOKEN="votre_access_token"
-curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/stations
+
+# Tester l'API
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/regions
+```
+
+### Interface Swagger UI
+
+1. Ouvrir http://localhost:8000/docs
+2. Cliquer sur le bouton **"Authorize"** 🔒
+3. Coller le token
+4. Tester les endpoints directement !
+
+📖 **Guide complet** : [KEYCLOAK_GUIDE.md](KEYCLOAK_GUIDE.md)
+
+---
+
+## 📡 Endpoints de l'API
+
+### 📍 Géolocalisation
+
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| `GET` | `/regions` | Liste toutes les régions françaises |
+| `GET` | `/regions/{id}` | Détails d'une région |
+| `GET` | `/departements` | Liste tous les départements |
+| `GET` | `/departements/{id}` | Détails d'un département |
+
+### 🚉 Gares & Stations
+
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| `GET` | `/stations` | Liste des gares (pagination) |
+| `GET` | `/stations/{code_uic}` | Détails d'une gare |
+| `GET` | `/stations/{code_uic}/delays` | Statistiques de retards |
+| `GET` | `/stations/search?q=Paris` | Recherche de gares |
+
+### 🚆 Lignes & Trains
+
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| `GET` | `/lines` | Liste des lignes ferroviaires |
+| `GET` | `/lines/{id}` | Détails d'une ligne |
+| `GET` | `/lines/{id}/stats` | Performance d'une ligne |
+| `GET` | `/trains` | Trains en circulation |
+| `GET` | `/trains/{id}` | Détails d'un train |
+
+### ⚠️ Alertes & Incidents
+
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| `GET` | `/alerts` | Toutes les alertes actives |
+| `GET` | `/alerts/major` | Alertes critiques uniquement |
+| `GET` | `/alerts/{id}` | Détails d'une alerte |
+
+### 📊 Statistiques
+
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| `GET` | `/stats/delays/top` | Top 10 des gares les plus en retard |
+| `GET` | `/stats/lines/punctuality` | Taux de ponctualité par ligne |
+
+📚 **Documentation interactive complète** : http://localhost:8000/docs
+
+---
+
+## 🏗️ Architecture Technique
+
+### Stack Technologique
+
+```
+┌─────────────────────────────────────┐
+│     FastAPI + Uvicorn (API)         │
+├─────────────────────────────────────┤
+│  Keycloak (OAuth2 / OpenID Connect) │
+├─────────────────────────────────────┤
+│    PostgreSQL 15 (Base de données)  │
+├─────────────────────────────────────┤
+│   Sources de données externes :     │
+│  • Navitia.io (temps réel)          │
+│  • SNCF Open Data (horaires)        │
+│  • OpenDataSoft (référentiels)      │
+└─────────────────────────────────────┘
+```
+
+### Structure du Projet
+
+```
+Projet_API/
+├── app/
+│   ├── api/routes/         # Endpoints de l'API
+│   ├── core/               # Configuration, sécurité, DB
+│   ├── models/             # Modèles SQLAlchemy
+│   ├── services/           # Intégrations APIs externes
+│   └── tasks/              # Synchronisation des données
+├── docker-compose.yml      # Services (PostgreSQL, Keycloak)
+├── start.py                # Point d'entrée principal
+├── setup_keycloak.py       # Configuration auto Keycloak
+├── get_token.py            # Récupération rapide de token
+└── test_sync.py            # Test de synchronisation
 ```
 
 ---
 
 ## ⚙️ Configuration
 
-### Variables d'environnement essentielles
+### Variables d'environnement (.env)
 
 ```env
+# API
+API_TITLE=Rail Traffic Analytics
+API_VERSION=0.1.0
+
+# PostgreSQL
+DATABASE_URL=postgresql+psycopg://rail_user:rail_password@localhost:5432/rail_analytics
+
 # Keycloak OAuth2
 KEYCLOAK_JWKS_URL=http://localhost:8080/realms/rail/protocol/openid-connect/certs
 KEYCLOAK_AUDIENCE=rail-traffic-api
 KEYCLOAK_ISSUER=http://localhost:8080/realms/rail
 
-# PostgreSQL
-DATABASE_URL=postgresql+psycopg://rail_user:rail_password@localhost:5432/rail_analytics
-
-# APIs externes (optionnel)
-NAVITIA_API_KEY=votre_cle_navitia
-OPENDATA_API_KEY=votre_cle_sncf
+# APIs externes
+NAVITIA_API_KEY=your_navitia_api_key
+OPENDATA_API_BASE_URL=https://data.sncf.com/api/explore/v2.1
+OPENDATASOFT_BASE_URL=https://public.opendatasoft.com/api/explore/v2.1
 ```
 
-Voir `.env.example` pour la configuration complète.
+📝 **Note** : Copiez `.env.example` vers `.env` et ajustez les valeurs.
 
 ---
 
-## 📚 Documentation
-### Documentation interactive
+## 🗄️ Base de Données
 
-- **Swagger UI** : http://localhost:8000/docs
-- **ReDoc** : http://localhost:8000/redoc
+### Accès à PostgreSQL
+
+**Via pgAdmin (inclus)** : http://localhost:5050
+- Email : `admin@rail.local`
+- Password : `admin`
+
+**Via DataGrip / DBeaver :**
+- Host : `localhost`
+- Port : `5432`
+- Database : `rail_analytics`
+- User : `rail_user`
+- Password : `rail_password`
+
+### Tables principales
+
+| Table | Description | Lignes (après sync) |
+|-------|-------------|---------------------|
+| `regions` | Régions françaises | ~13 |
+| `departements` | Départements | ~5 |
+| `stations` | Gares SNCF | ~6000 |
+| `lines` | Lignes ferroviaires | ~25 |
+| `trains` | Trains en circulation | ~120 |
+| `alerts` | Alertes et incidents | ~25 |
+| `request_logs` | Logs des requêtes API | Variable |
+
+### Requêtes SQL utiles
+
+```sql
+-- Top 10 des gares avec le plus de trains
+SELECT name, COUNT(*) as train_count
+FROM trains t
+JOIN stations s ON t.station_id = s.id
+GROUP BY s.name
+ORDER BY train_count DESC
+LIMIT 10;
+
+-- Alertes critiques actives
+SELECT title, severity, affected_lines
+FROM alerts
+WHERE status = 'active' AND severity = 'critical';
+
+-- Taux de ponctualité par ligne
+SELECT line_external_id,
+       AVG(CASE WHEN delay_minutes = 0 THEN 100 ELSE 0 END) as punctuality_rate
+FROM trains
+GROUP BY line_external_id;
+```
+
+---
+
+## 🧪 Tests
+
+### Tester la synchronisation
+
+```bash
+python test_sync.py
+```
+
+### Tester les APIs
+
+```bash
+# Sans authentification (mode dev)
+python test_apis.py
+
+# Avec authentification
+export TOKEN=$(./get_token.sh | grep export | cut -d'"' -f2)
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/stations?limit=5
+```
+
+---
+
+## 🐳 Docker
+
+### Commandes utiles
+
+```bash
+# Démarrer tous les services
+docker compose up -d
+
+# Voir les logs
+docker compose logs -f
+
+# Arrêter les services
+docker compose down
+
+# Réinitialiser complètement (⚠️ supprime les données)
+docker compose down -v
+docker compose up -d
+./setup_keycloak.sh
+```
+
+### Services disponibles
+
+| Service | Port | URL |
+|---------|------|-----|
+| **API FastAPI** | 8000 | http://localhost:8000 |
+| **Swagger UI** | 8000 | http://localhost:8000/docs |
+| **PostgreSQL** | 5432 | `psql -h localhost -U rail_user -d rail_analytics` |
+| **pgAdmin** | 5050 | http://localhost:5050 |
+| **Keycloak** | 8080 | http://localhost:8080 |
 
 ---
 
 ## 🔒 Sécurité
 
-### Validation JWT stricte
-- ✅ Vérification signature RS256
-- ✅ Validation audience (`aud`)
-- ✅ Validation issuer (`iss`)
-- ✅ Vérification expiration (`exp`)
-
 ### Rate Limiting
-- 100 requêtes/minute par utilisateur
-- Identification via claim `sub` du token
-- HTTP 429 en cas de dépassement
 
-### Journalisation
-- Logs automatiques dans PostgreSQL
-- Table `request_logs` : méthode, path, user_id, durée, statut
+- **Limite** : 100 requêtes par minute par utilisateur
+- **Identification** : Token OAuth2 (sub claim)
+- **Réponse** : HTTP 429 si dépassé
 
-```sql
--- Consulter les logs récents
-SELECT * FROM request_logs 
-ORDER BY created_at DESC 
-LIMIT 20;
+### OAuth2 / OpenID Connect
+
+- **Protocole** : OAuth2 avec Keycloak
+- **Flux** : Resource Owner Password Credentials Grant
+- **Token** : JWT signé RS256
+- **Durée** : 5 minutes (configurable)
+
+### Bonnes pratiques
+
+- ✅ `.env` dans `.gitignore`
+- ✅ Client secrets jamais dans le code
+- ✅ HTTPS obligatoire en production
+- ✅ Rotation régulière des secrets
+
+---
+
+## 🚀 Déploiement Production
+
+### Checklist
+
+- [ ] Variables d'environnement en secrets
+- [ ] `KC_HOSTNAME` configuré pour Keycloak
+- [ ] HTTPS activé (Let's Encrypt, Traefik, Nginx)
+- [ ] PostgreSQL avec backup automatique
+- [ ] Monitoring (Prometheus, Grafana)
+- [ ] Rate limiting ajusté selon le traffic
+- [ ] Logs centralisés (ELK, Loki)
+
+### Exemple avec Docker Compose (production)
+
+```yaml
+services:
+  api:
+    image: ghcr.io/votre-org/rail-traffic-api:latest
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - KEYCLOAK_ISSUER=https://auth.votredomaine.com/realms/rail
+    restart: always
+    depends_on:
+      - postgres
+      - keycloak
 ```
 
 ---
 
-## 🧪 Tester l'API
+## 📖 Documentation Complète
 
-### 1. Via Swagger UI (Interface graphique)
+- **[KEYCLOAK_GUIDE.md](KEYCLOAK_GUIDE.md)** - Configuration Keycloak pas à pas
+- **[API Documentation](http://localhost:8000/docs)** - Swagger UI interactive
+- **[ReDoc](http://localhost:8000/redoc)** - Documentation alternative
 
-1. Ouvrez http://localhost:8000/docs
-2. Cliquez sur **"Authorize"** 🔒
-3. Collez votre token Keycloak
-4. Testez les endpoints interactivement
+---
 
-### 2. Via curl (Ligne de commande)
+## 🛠️ Développement
+
+### Installer en mode dev
 
 ```bash
-# Régions
-curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8000/regions
-
-# Gares avec pagination
-curl -H "Authorization: Bearer $TOKEN" \
-  "http://localhost:8000/stations?limit=10&search=Paris"
-
-# Statistiques d'une ligne
-curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8000/lines/LINE_ID/stats?days=30
-
-# Alertes actives
-curl -H "Authorization: Bearer $TOKEN" \
-  "http://localhost:8000/alerts/major?severity=critical"
+pip install -r requirements.txt
+pip install -r requirements-dev.txt  # Si vous avez des outils de dev
 ```
 
----
-
-## 📊 Sources de données
-
-| Source | Usage | Documentation |
-|--------|-------|---------------|
-| **SNCF Open Data** | Gares, horaires | https://data.sncf.com |
-| **Navitia.io** | Temps réel, perturbations | https://doc.navitia.io |
-| **OpenDataSoft** | Régions, départements | https://public.opendatasoft.com |
-
----
-
-## 🛠️ Commandes utiles
+### Lancer en mode développement
 
 ```bash
-# Démarrer l'environnement Docker
-docker-compose up -d
-
-# Arrêter Docker
-docker-compose down
-
-# Activer l'environnement Python
-source .venv/bin/activate
-
-# Démarrer l'API
+# Avec rechargement automatique
 python start.py
 
-# Voir les logs PostgreSQL
-docker-compose logs -f postgres
-
-# Accéder à la base de données
-docker exec -it rail_postgres psql -U rail_user -d rail_analytics
+# Ou directement avec uvicorn
+uvicorn app.main:app --reload
 ```
 
----
+### Pré-commit hooks
 
-## 🎯 Prochaines étapes
+```bash
+# Installer pre-commit
+pip install pre-commit
+pre-commit install
 
-Après l'installation :
-
-1. ✅ Configurer Keycloak (realm, client, utilisateur)
-2. ✅ Obtenir une clé API Navitia.io (gratuit)
-3. ✅ Tester tous les endpoints via Swagger UI
-4. ✅ Consulter les logs dans PostgreSQL
-5. 📖 Lire la documentation complète
+# Lancer manuellement
+pre-commit run --all-files
+```
 
 ---
 
 ## 🤝 Contribution
 
-Les contributions sont bienvenues ! Domaines d'amélioration :
+Les contributions sont les bienvenues ! Merci de :
 
-- [ ] Tests unitaires et d'intégration
-- [ ] Cache Redis pour performances
-- [ ] Dashboard front-end
-- [ ] Prédiction ML des retards
-- [ ] Export CSV/Excel
-- [ ] Webhooks pour alertes
+1. Fork le projet
+2. Créer une branche (`git checkout -b feature/ma-fonctionnalite`)
+3. Commit vos changements (`git commit -m 'Ajout fonctionnalité X'`)
+4. Push vers la branche (`git push origin feature/ma-fonctionnalite`)
+5. Ouvrir une Pull Request
 
 ---
 
-<div align="center">
+## 📄 Licence
 
-**Développé avec FastAPI, Keycloak et PostgreSQL**
+Ce projet est sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
 
-Documentation complète disponible dans le dossier du projet
+---
 
-</div>
+## 🙏 Remerciements
+
+- **SNCF Open Data** - Données ouvertes ferroviaires
+- **Navitia.io** - API de transport en temps réel
+- **OpenDataSoft** - Référentiels géographiques
+- **Keycloak** - Solution d'authentification open-source
+- **FastAPI** - Framework web moderne et performant
+
+---
+
+## 📞 Support
+
+- 📧 Email : support@votredomaine.com
+- 🐛 Issues : [GitHub Issues](https://github.com/votre-org/Projet_API/issues)
+- 💬 Discord : [Rejoindre la communauté](#)
+
+---
+
+**🚆 Happy Tracking! 🚄**
 
