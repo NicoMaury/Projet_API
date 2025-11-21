@@ -137,18 +137,6 @@ fastapi dev app/main.py
 - PostgreSQL : localhost:5432 (rail_user/rail_password)
 - pgAdmin : http://localhost:5050 (admin@rail.local/admin)
 
-📖 **Guide complet** : [DOCKER_GUIDE.md](DOCKER_GUIDE.md)
-
-### Option 2 : Installation manuelle
-
-```bash
-# 1. Installation automatique
-./install.sh
-
-# 2. Configuration manuelle de PostgreSQL et Keycloak
-# Voir GUIDE_INSTALLATION.md
-```
-
 ---
 
 ## 📡 Endpoints de l'API
@@ -232,15 +220,6 @@ Voir `.env.example` pour la configuration complète.
 ---
 
 ## 📚 Documentation
-
-| Document | Description |
-|----------|-------------|
-| [DEMARRAGE_RAPIDE.md](DEMARRAGE_RAPIDE.md) | ⚡ Démarrage en 5 minutes |
-| [DOCKER_GUIDE.md](DOCKER_GUIDE.md) | 🐳 Guide complet Docker |
-| [GUIDE_INSTALLATION.md](GUIDE_INSTALLATION.md) | 🛠️ Installation pas à pas |
-| [API_ENDPOINTS.md](API_ENDPOINTS.md) | 📡 Documentation des endpoints |
-| [SYNTHESE_PROJET.md](SYNTHESE_PROJET.md) | 📊 État d'avancement complet |
-
 ### Documentation interactive
 
 - **Swagger UI** : http://localhost:8000/docs
@@ -361,20 +340,6 @@ Les contributions sont bienvenues ! Domaines d'amélioration :
 - [ ] Prédiction ML des retards
 - [ ] Export CSV/Excel
 - [ ] Webhooks pour alertes
-
----
-
-## 📝 Licence
-
-Projet éducatif - Utilisation libre pour l'apprentissage
-
----
-
-## 📧 Support
-
-- 📖 **Documentation** : Consultez les fichiers `.md` du projet
-- 🐛 **Issues** : Signalez les bugs via les issues GitHub
-- 💬 **Questions** : Consultez d'abord [SYNTHESE_PROJET.md](SYNTHESE_PROJET.md)
 
 ---
 
