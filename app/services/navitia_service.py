@@ -31,10 +31,32 @@ class NavitiaService:
         return response.json()
 
     def get_disruptions(self, region: str = "sncf") -> List[Dict[str, Any]]:
-        """Get current disruptions/alerts on the network."""
+        """Get ALL disruptions/alerts on the network (paginated)."""
         try:
-            data = self.get(f"coverage/{region}/disruptions")
-            return data.get("disruptions", [])
+            all_disruptions = []
+            start_page = 0
+            count_per_page = 100  # Navitia max per page
+            
+            while True:
+                params = {"start_page": start_page, "count": count_per_page}
+                data = self.get(f"coverage/{region}/disruptions", params=params)
+                disruptions = data.get("disruptions", [])
+                
+                if not disruptions:
+                    break  # No more disruptions
+                
+                all_disruptions.extend(disruptions)
+                
+                # Check pagination info
+                pagination = data.get("pagination", {})
+                total_result = pagination.get("total_result", 0)
+                
+                if len(all_disruptions) >= total_result:
+                    break  # Got all disruptions
+                
+                start_page += 1
+            
+            return all_disruptions
         except Exception:
             return []
 
@@ -64,10 +86,32 @@ class NavitiaService:
             return []
 
     def get_lines(self, region: str = "sncf") -> List[Dict[str, Any]]:
-        """Get list of lines in the region."""
+        """Get list of ALL lines in the region (paginated)."""
         try:
-            data = self.get(f"coverage/{region}/lines")
-            return data.get("lines", [])
+            all_lines = []
+            start_page = 0
+            count_per_page = 100  # Navitia max per page
+            
+            while True:
+                params = {"start_page": start_page, "count": count_per_page}
+                data = self.get(f"coverage/{region}/lines", params=params)
+                lines = data.get("lines", [])
+                
+                if not lines:
+                    break  # No more lines
+                
+                all_lines.extend(lines)
+                
+                # Check pagination info
+                pagination = data.get("pagination", {})
+                total_result = pagination.get("total_result", 0)
+                
+                if len(all_lines) >= total_result:
+                    break  # Got all lines
+                
+                start_page += 1
+            
+            return all_lines
         except Exception:
             return []
 

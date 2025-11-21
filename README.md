@@ -202,7 +202,7 @@ python start.py
 ### 📝 Configuration Keycloak
 
 > **✅ Configuration pré-existante** : Le realm `rail` et le client `rail-traffic-api` sont déjà configurés dans Keycloak.  
-> Il ne reste qu'à **récupérer le client secret**.
+> Il faut **activer les Service Accounts** et **récupérer le client secret**.
 
 #### Étape 1 : Démarrer Keycloak
 
@@ -214,7 +214,7 @@ docker-compose up -d keycloak
 docker-compose logs -f keycloak
 ```
 
-#### Étape 2 : Récupérer le Client Secret
+#### Étape 2 : Activer les Service Accounts (OAuth2 Client Credentials)
 
 1. Ouvrez http://localhost:8080
 2. Connectez-vous avec les identifiants :
@@ -223,15 +223,49 @@ docker-compose logs -f keycloak
 3. Sélectionnez le realm **"rail"** (menu déroulant en haut à gauche)
 4. Dans le menu de gauche, cliquez sur **"Clients"**
 5. Cliquez sur **"rail-traffic-api"** dans la liste
-6. Allez dans l'onglet **"Credentials"**
-7. Copiez le **"Client secret"** affiché
-8. Ajoutez-le dans votre fichier `.env`
+6. Dans l'onglet **"Settings"** :
+   - ✅ **Client authentication** : ON (activé)
+   - ✅ **Service accounts roles** : ON (activé) ⚠️ **IMPORTANT**
+   - ✅ **Standard flow** : ON (optionnel)
+   - ❌ **Direct access grants** : OFF (non utilisé)
+7. Cliquez sur **"Save"**
+
+#### Étape 3 : Récupérer le Client Secret
+
+1. Restez sur le client **"rail-traffic-api"**
+2. Allez dans l'onglet **"Credentials"**
+3. Copiez le **"Client secret"** affiché
+4. Ajoutez-le dans votre fichier `.env` :
+   ```bash
+   # Éditer le fichier .env
+   nano .env
+   
+   # Ajouter/Modifier cette ligne
+   KEYCLOAK_CLIENT_SECRET=votre_secret_copié_ici
+   ```
+
+#### Étape 4 : Vérifier la configuration
+
+Testez que le client fonctionne :
+
+```bash
+curl -X POST 'http://localhost:8080/realms/rail/protocol/openid-connect/token' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'client_id=rail-traffic-api' \
+  -d 'client_secret=VOTRE_CLIENT_SECRET' \
+  -d 'grant_type=client_credentials'
+```
+
+✅ **Si ça fonctionne**, vous recevrez un token.  
+❌ **Si erreur "unauthorized_client"**, vérifiez que **Service accounts roles** est bien activé à l'Étape 2.
 
 ---
 
-### 🔑 Obtenir un token d'authentification OAuth2
+## 🔑 Utilisation de l'API avec authentification
 
-L'API utilise le flux **Client Credentials** (OAuth2 machine-to-machine).
+### Obtenir un token OAuth2
+
+L'API utilise le flux **Client Credentials** (OAuth2 machine-to-machine). Aucun utilisateur n'est requis.
 
 ```bash
 curl -X POST 'http://localhost:8080/realms/rail/protocol/openid-connect/token' \
@@ -247,24 +281,24 @@ curl -X POST 'http://localhost:8080/realms/rail/protocol/openid-connect/token' \
 {
   "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
   "expires_in": 300,
-  "token_type": "Bearer"
+  "token_type": "Bearer",
+  "scope": "profile email rail-traffic-api-scope"
 }
 ```
 
-### 🚀 Utiliser le token
+**⏱️ Durée de validité :** Les tokens expirent après **5 minutes** (300 secondes).
 
+**💡 Astuce :** Pour extraire uniquement le token :
 ```bash
-# Extraire et exporter le token
-export TOKEN=$(curl -s -X POST 'http://localhost:8080/realms/rail/protocol/openid-connect/token' \
+curl -s -X POST 'http://localhost:8080/realms/rail/protocol/openid-connect/token' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d 'client_id=rail-traffic-api' \
-  -d 'client_secret=VOTRE_CLIENT_SECRET' \
-  -d 'grant_type=client_credentials' | python3 -m json.tool | grep access_token | cut -d'"' -f4)
-
-# Utiliser le token dans vos requêtes
-curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/regions
-curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/stations
+  -d 'client_secret=k8JVC02I3pbJ08Dy7UWl97pPIqnBxq3u' \
+  -d 'grant_type=client_credentials' | \
+  python3 -c "import sys, json; print('Bearer ' + json.load(sys.stdin)['access_token'])"
 ```
+
+Cette commande affiche directement le token au format `Bearer eyJhbG...` prêt à être copié dans Swagger UI !
 
 ---
 
