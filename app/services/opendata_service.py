@@ -15,7 +15,7 @@ class OpenDataService:
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout
         self._session = requests.Session()
-        if api_key:
+        if api_key and api_key not in (None, "", "your_opendata_token"):
             self._session.headers.update({"Authorization": f"apikey {api_key}"})
 
     def _build_url(self, endpoint: str) -> str:
