@@ -100,13 +100,61 @@ Rail Traffic Analytics est une solution complète pour analyser le réseau ferro
 └──────────────┘ └──────────┘ └──────────────┘
 ```
 
-### Structure du Projet
+### 🎯 Choix Techniques et Justifications
+
+| Technologie | Version | Justification |
+|-------------|---------|---------------|
+| **FastAPI** | 0.110.0 | Framework Python moderne, rapide, avec documentation automatique (Swagger UI). Typage fort avec Pydantic. |
+| **PostgreSQL** | 15 | Base de données relationnelle robuste, idéale pour les données structurées (gares, trains, statistiques). |
+| **Keycloak** | 23.0 | Solution OAuth2/OpenID Connect professionnelle, évite de coder l'authentification manuellement. |
+| **SQLAlchemy** | 2.0 | ORM Python puissant pour gérer les modèles de base de données de manière Pythonique. |
+| **Pydantic** | 2.6 | Validation automatique des données entrantes/sortantes, génération des schémas OpenAPI. |
+| **SlowAPI** | 0.1.9 | Rate limiting basé sur la bibliothèque Flask-Limiter, protège contre les abus. |
+| **Docker Compose** | - | Orchestration multi-conteneurs, simplifie le déploiement (PostgreSQL + Keycloak + pgAdmin). |
+
+### 📐 Architecture en Couches (Clean Architecture)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    API Layer (FastAPI)                      │
+│  - Réception des requêtes HTTP                              │
+│  - Validation JWT (security.py)                             │
+│  - Rate limiting (100 req/min)                              │
+│  - Sérialisation/Désérialisation JSON                       │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                 Business Logic Layer                        │
+│  - Services métier (navitia_service.py, etc.)               │
+│  - Appels aux APIs externes (SNCF, Navitia, OpenDataSoft)  │
+│  - Transformation des données                               │
+│  - Calculs statistiques                                     │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  Data Access Layer                          │
+│  - Modèles SQLAlchemy (db.py)                               │
+│  - Schémas Pydantic (schemas.py)                            │
+│  - Gestion des sessions PostgreSQL                          │
+│  - Journalisation des requêtes (request_logs)               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Avantages de cette architecture :**
+- ✅ Séparation des responsabilités (API / Business / Data)
+- ✅ Testabilité : chaque couche peut être testée indépendamment
+- ✅ Maintenabilité : modifications localisées (ex: changer de BDD)
+- ✅ Évolutivité : facile d'ajouter de nouvelles routes ou services
+
+### Structure du Projet (Détaillée)
 
 ```
 Projet_API/
 ├── app/
 │   ├── api/
-│   │   └── routes/          # 12 endpoints REST
+│   │   └── routes/          # 🌐 Endpoints REST (12 routes)
 │   │       ├── alerts.py    # Alertes majeures
 │   │       ├── departements.py
 │   │       ├── lines.py     # Lignes ferroviaires
@@ -115,10 +163,87 @@ Projet_API/
 │   │       ├── stats.py     # Statistiques globales
 │   │       └── trains.py    # Trains en circulation
 │   ├── core/
-│   │   ├── config.py        # Configuration Pydantic
-│   │   ├── database.py      # SQLAlchemy
-│   │   ├── rate_limit.py    # SlowAPI
-│   │   └── security.py      # Validation JWT
+│   │   ├── config.py        # ⚙️ Configuration Pydantic
+│   │   ├── database.py      # 🗄️ SQLAlchemy setup
+│   │   ├── rate_limit.py    # 🚦 SlowAPI (100 req/min)
+│   │   └── security.py      # 🔐 Validation JWT Keycloak
+│   ├── models/
+│   │   ├── db.py           # 📊 Modèles base de données
+│   │   └── schemas.py      # 📋 33 schémas Pydantic
+│   ├── services/
+│   │   ├── navitia_service.py      # 🚉 API Navitia.io
+│   │   ├── opendata_service.py     # 🚂 SNCF Open Data
+│   │   └── opendatasoft_service.py # 🗺️ Données géographiques
+│   └── main.py             # 🚀 Point d'entrée FastAPI
+├── docker-compose.yml       # 🐳 PostgreSQL + Keycloak + pgAdmin
+├── init-db.sql             # 📝 Schema SQL + import Keycloak
+├── start.py                # ▶️ Script de démarrage simplifié
+├── requirements.txt        # 📦 Dépendances Python
+└── README.md              # 📚 Cette documentation
+```
+
+### 🔄 Flux d'une Requête Typique
+
+**Exemple : Récupérer la liste des gares**
+
+```
+1. Client envoie:
+   GET /stations?limit=10
+   Authorization: Bearer eyJhbGciOiJSUzI1...
+
+2. FastAPI (main.py)
+   ├─ Middleware SlowAPI: Vérifie rate limit (100/min)
+   ├─ Middleware logging: Enregistre la requête
+   └─ Route /stations activée
+
+3. Security (security.py)
+   ├─ Extrait le token JWT du header Authorization
+   ├─ Télécharge les clés publiques depuis Keycloak (JWKS)
+   ├─ Vérifie la signature RS256
+   ├─ Valide audience, issuer, expiration
+   └─ Autorise ou rejette (401)
+
+4. Route Handler (routes/stations.py)
+   ├─ Valide les paramètres de query (?limit=10)
+   ├─ Appelle le service approprié
+   └─ Retourne la réponse JSON
+
+5. Service (opendatasoft_service.py)
+   ├─ Interroge l'API SNCF Open Data
+   ├─ Parse la réponse JSON
+   └─ Transforme en objets Pydantic
+
+6. FastAPI
+   ├─ Sérialise les objets Pydantic en JSON
+   ├─ Ajoute les headers CORS
+   ├─ Enregistre le temps de réponse en BDD
+   └─ Retourne HTTP 200 + JSON
+```
+
+### 🗄️ Modèle de Données PostgreSQL
+
+```sql
+-- Table principale: journalisation
+CREATE TABLE request_logs (
+    id SERIAL PRIMARY KEY,
+    method VARCHAR(10) NOT NULL,        -- GET, POST, etc.
+    path TEXT NOT NULL,                 -- /stations, /trains, etc.
+    user_id VARCHAR(255),               -- Claim 'sub' du token JWT
+    status_code INTEGER NOT NULL,       -- 200, 401, 429, etc.
+    duration_ms INTEGER NOT NULL,       -- Temps de traitement
+    created_at TIMESTAMP DEFAULT NOW()  -- Date/heure de la requête
+);
+
+-- Index pour améliorer les performances
+CREATE INDEX idx_request_logs_user ON request_logs(user_id);
+CREATE INDEX idx_request_logs_created ON request_logs(created_at);
+```
+
+**Cas d'usage :**
+- Analyser les endpoints les plus utilisés
+- Détecter les utilisateurs qui abusent de l'API
+- Mesurer les performances (temps de réponse moyen)
+- Audit de sécurité (qui a accédé à quoi et quand)
 │   ├── models/
 │   │   ├── db.py           # Modèles base de données
 │   │   └── schemas.py      # 33 schémas Pydantic
@@ -202,7 +327,9 @@ python start.py
 ### 📝 Configuration Keycloak
 
 > **✅ Configuration pré-existante** : Le realm `rail` et le client `rail-traffic-api` sont déjà configurés dans Keycloak.  
-> Il faut **activer les Service Accounts** et **récupérer le client secret**.
+> **⚠️ IMPORTANT** : Cette API utilise le flux **Client Credentials** (OAuth2 machine-to-machine).  
+> **Vous N'AVEZ PAS besoin de créer d'utilisateur dans Keycloak !**  
+> Il suffit d'activer les Service Accounts et récupérer le client secret.
 
 #### Étape 1 : Démarrer Keycloak
 
@@ -215,6 +342,8 @@ docker-compose logs -f keycloak
 ```
 
 #### Étape 2 : Activer les Service Accounts (OAuth2 Client Credentials)
+
+**⚠️ PAS BESOIN DE CRÉER D'UTILISATEUR ! Le flux Client Credentials fonctionne sans utilisateur.**
 
 1. Ouvrez http://localhost:8080
 2. Connectez-vous avec les identifiants :
@@ -385,6 +514,177 @@ curl -H "Authorization: Bearer $TOKEN" \
 # Alertes actives
 curl -H "Authorization: Bearer $TOKEN" \
   "http://localhost:8000/alerts/major?severity=critical"
+```
+
+---
+
+## ❓ FAQ - Questions Fréquentes
+
+### 🎓 Pourquoi utiliser le flux "Client Credentials" plutôt que créer des utilisateurs ?
+
+Cette API utilise le flux **OAuth2 Client Credentials** (machine-to-machine), qui est différent du flux classique avec login/password.
+
+**Comprendre les différences :**
+
+| Flux "Authorization Code" (classique) | Flux "Client Credentials" (utilisé ici) |
+|--------------------------------------|----------------------------------------|
+| ✅ Utilisateur se connecte avec login/password | ❌ Pas de login utilisateur |
+| ✅ Nécessite création de comptes utilisateurs | ✅ Utilise directement le client |
+| ✅ Idéal pour applications web/mobile | ✅ Idéal pour API-to-API |
+| ❌ Plus complexe à tester | ✅ Simple à tester |
+
+**Dans notre cas :**
+- L'API est conçue pour être consommée par d'autres applications/services
+- Pas besoin d'interface utilisateur de connexion
+- Le **client** (`rail-traffic-api`) représente l'application qui consomme l'API
+- Le **client secret** joue le rôle de "mot de passe" de l'application
+
+**Analogie simple :**
+- Flux classique = Vous entrez dans un bâtiment avec votre badge personnel
+- Client Credentials = Une machine à café qui a un code d'accès permanent
+
+### 🔐 Comment fonctionne l'authentification OAuth2 Client Credentials ?
+
+**Schéma du flux :**
+
+```
+┌─────────────┐                                    ┌──────────────┐
+│   Client    │                                    │  Keycloak    │
+│ (Postman/   │  1. POST /token + client_id       │  (Serveur    │
+│  curl/app)  │     + client_secret                │   OAuth2)    │
+│             │  ─────────────────────────────────>│              │
+│             │                                    │ ✓ Vérifie    │
+│             │  2. Retourne access_token (JWT)   │   credentials│
+│             │  <─────────────────────────────────│              │
+└─────────────┘                                    └──────────────┘
+       │
+       │ 3. Requête API + Bearer token
+       │    Authorization: Bearer eyJhbGc...
+       ▼
+┌─────────────────────────────────────────┐
+│     Rail Traffic Analytics API          │
+│  ┌───────────────────────────────────┐  │
+│  │ 1. Extrait le token du header     │  │
+│  │ 2. Vérifie la signature avec      │  │
+│  │    les clés publiques Keycloak    │  │
+│  │ 3. Valide audience, issuer, exp   │  │
+│  │ 4. Autorise ou rejette (401)      │  │
+│  └───────────────────────────────────┘  │
+└─────────────────────────────────────────┘
+```
+
+**Pourquoi c'est sécurisé ?**
+- Le token JWT est **signé cryptographiquement** par Keycloak (RS256)
+- L'API vérifie la signature avec la **clé publique** de Keycloak
+- Le token a une **durée de vie limitée** (5 minutes)
+- Impossible de falsifier un token sans avoir la clé privée de Keycloak
+
+### 🛠️ Je suis bloqué à l'étape Keycloak, que faire ?
+
+**Problème 1 : "unauthorized_client" lors de la récupération du token**
+
+**Cause :** Les Service Accounts ne sont pas activés
+
+**Solution :**
+```bash
+1. Aller sur http://localhost:8080
+2. Se connecter (admin/admin)
+3. Sélectionner le realm "rail" en haut à gauche
+4. Menu "Clients" → Cliquer sur "rail-traffic-api"
+5. Dans l'onglet "Settings" :
+   ✅ Client authentication: ON
+   ✅ Service accounts roles: ON  ← CRITIQUE
+6. Cliquer "Save"
+7. Réessayer la commande curl
+```
+
+**Problème 2 : Je ne vois pas le client "rail-traffic-api"**
+
+**Cause :** Le realm n'est pas correctement initialisé
+
+**Solution :**
+```bash
+# Arrêter et supprimer les conteneurs
+docker-compose down -v
+
+# Redémarrer (cela réinitialise Keycloak)
+docker-compose up -d
+
+# Attendre 60 secondes que Keycloak démarre
+docker-compose logs -f keycloak
+# (Attendre de voir "Keycloak ... started")
+```
+
+**Problème 3 : Le token fonctionne dans curl mais pas dans Swagger UI**
+
+**Cause :** Format du token incorrect dans Swagger
+
+**Solution :**
+- Dans Swagger, coller **UNIQUEMENT** le token : `eyJhbGciOiJSUzI1NiIsInR5cCI6...`
+- **NE PAS** inclure le mot "Bearer" (Swagger l'ajoute automatiquement)
+
+**Problème 4 : Erreur "Invalid authorization token" (401)**
+
+**Causes possibles :**
+1. Le token a expiré (durée de vie : 5 minutes)
+   → Solution : Régénérer un nouveau token
+2. Le client secret est incorrect dans `.env`
+   → Solution : Vérifier que `KEYCLOAK_CLIENT_SECRET` correspond au secret dans Keycloak
+3. Les URLs Keycloak sont incorrectes
+   → Solution : Vérifier que Keycloak est accessible sur `http://localhost:8080`
+
+### 🧪 Comment tester que tout fonctionne ?
+
+**Test complet en 4 étapes :**
+
+```bash
+# Étape 1 : Vérifier que Keycloak fonctionne
+curl http://localhost:8080/realms/rail
+
+# Devrait retourner du JSON avec "realm": "rail"
+
+# Étape 2 : Obtenir un token
+TOKEN=$(curl -s -X POST 'http://localhost:8080/realms/rail/protocol/openid-connect/token' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'client_id=rail-traffic-api' \
+  -d 'client_secret=k8JVC02I3pbJ08Dy7UWl97pPIqnBxq3u' \
+  -d 'grant_type=client_credentials' | \
+  python -c "import sys, json; print(json.load(sys.stdin)['access_token'])")
+
+# Étape 3 : Vérifier que l'API fonctionne
+curl http://localhost:8000/regions
+
+# Devrait retourner 401 Unauthorized (normal, pas de token)
+
+# Étape 4 : Tester avec le token
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/regions
+
+# Devrait retourner la liste des régions françaises ✅
+```
+
+### 📝 Commandes utiles pour le projet
+
+```bash
+# Démarrer tous les services
+docker-compose up -d
+
+# Voir les logs de Keycloak
+docker-compose logs -f keycloak
+
+# Voir les logs de PostgreSQL
+docker-compose logs -f postgres
+
+# Arrêter tous les services
+docker-compose down
+
+# Tout réinitialiser (attention : perd les données)
+docker-compose down -v
+
+# Lancer l'API Python
+python start.py
+
+# Installer les dépendances
+pip install -r requirements.txt
 ```
 
 ---

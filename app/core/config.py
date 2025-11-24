@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     API_TITLE: str = Field("Rail Traffic Analytics", env="API_TITLE")
     API_VERSION: str = Field("0.1.0", env="API_VERSION")
 
+
     KEYCLOAK_JWKS_URL: AnyHttpUrl = Field(..., env="KEYCLOAK_JWKS_URL")
     KEYCLOAK_AUDIENCE: str = Field(..., env="KEYCLOAK_AUDIENCE")
     KEYCLOAK_ISSUER: AnyHttpUrl = Field(..., env="KEYCLOAK_ISSUER")

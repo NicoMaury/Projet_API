@@ -59,6 +59,7 @@ async def require_keycloak_token(
 ) -> Dict[str, Any]:
     """FastAPI dependency enforcing Keycloak JWT validation for every endpoint."""
 
+
     if credentials is None or not credentials.credentials:
         raise HTTPException(status_code=401, detail="Authorization header missing")
 
