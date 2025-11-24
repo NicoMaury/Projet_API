@@ -4,6 +4,7 @@ import logging
 import time
 
 from fastapi import FastAPI, Request
+from fastapi.responses import RedirectResponse
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
@@ -50,6 +51,11 @@ def create_application() -> FastAPI:
             session.close()
 
         return response
+
+    @app.get("/", include_in_schema=False)
+    async def root():
+        """Redirection automatique vers la documentation interactive."""
+        return RedirectResponse(url="/docs")
 
     app.include_router(api_router)
 
