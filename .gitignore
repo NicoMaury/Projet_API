@@ -2,16 +2,7 @@
 # Rail Traffic Analytics - .gitignore
 # ========================================
 
-# ===== FICHIERS SENSIBLES (IMPORTANT!) =====
-.env
-.env.local
-.env.*.local
-*.key
-*.pem
-*.p12
-*.pfx
-secrets/
-credentials/
+# ===== FICHIERS SENSIBLES (IMPORTANT!)
 
 # ===== Python =====
 # Bytecode
@@ -45,7 +36,6 @@ MANIFEST
 .venv/
 venv/
 ENV/
-env/
 .virtualenv/
 
 # PyInstaller
