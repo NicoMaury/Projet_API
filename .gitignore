@@ -35,7 +35,6 @@ MANIFEST
 # Virtual environments
 .venv/
 venv/
-ENV/
 .virtualenv/
 
 # PyInstaller
@@ -162,7 +161,6 @@ pip-delete-this-directory.txt
 *.db-wal
 
 # Backups
-*.sql
 *.dump
 *.bak
 backup/
