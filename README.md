@@ -56,7 +56,7 @@ pip install -r requirements.txt
    ```
 2. Ouvrir le fichier `.env` et vérifier les valeurs proposées. Les paramètres fournis conviennent à une installation locale. Conserver le secret Keycloak qui sera défini plus tard :
    ```env
-   KEYCLOAK_CLIENT_SECRET=k8JVC02I3pbJ08Dy7UWl97pPIqnBxq3u
+   KEYCLOAK_CLIENT_SECRET=aExfzauTdDXVBr5rVYWMy8npDSc8wfG8
    ```
 
 ---
@@ -97,7 +97,7 @@ L'import automatique crée le realm et le client. Vous pouvez vérifier :
 2. Se connecter avec `admin` / `admin`.
 3. Dans le menu déroulant en haut à gauche, sélectionner `rail`.
 4. Menu `Clients` → `rail-traffic-api`.
-5. L’onglet `Credentials` affiche le secret déjà renseigné (`k8JVC02I3pbJ08Dy7UWl97pPIqnBxq3u`).
+5. L’onglet `Credentials` affiche le secret déjà renseigné (`aExfzauTdDXVBr5rVYWMy8npDSc8wfG8`).
 
 Aucune action supplémentaire n'est nécessaire tant que le fichier `keycloak-realm-import.json` n'est pas modifié.
 
@@ -113,7 +113,7 @@ Commande de test (adapter le secret si différent) :
 curl -X POST http://localhost:8080/realms/rail/protocol/openid-connect/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "client_id=rail-traffic-api" \
-  -d "client_secret=k8JVC02I3pbJ08Dy7UWl97pPIqnBxq3u" \
+  -d "client_secret=aExfzauTdDXVBr5rVYWMy8npDSc8wfG8" \
   -d "grant_type=client_credentials"
 ```
 
