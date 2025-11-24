@@ -1,0 +1,32 @@
+{
+  "realm": "rail",
+  "enabled": true,
+  "displayName": "Rail Traffic Analytics",
+  "accessTokenLifespan": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "registrationAllowed": false,
+  "clients": [
+    {
+      "clientId": "rail-traffic-api",
+      "name": "Rail Traffic API",
+      "description": "Client OAuth2 pour l'API Rail Traffic Analytics",
+      "enabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "k8JVC02I3pbJ08Dy7UWl97pPIqnBxq3u",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "attributes": {
+        "access.token.lifespan": "1800"
+      },
+      "fullScopeAllowed": true,
+      "defaultClientScopes": ["profile", "email"],
+      "optionalClientScopes": ["address", "phone"],
+      "redirectUris": ["http://localhost:8000/*", "http://127.0.0.1:8000/*", "*"]
+    }
+  ]
+}
