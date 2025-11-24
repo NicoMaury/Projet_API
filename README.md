@@ -77,16 +77,6 @@ docker-compose ps
 
 Si un conteneur reste en état `starting`, patienter une minute puis relancer la commande.
 
-Pour consulter les logs Keycloak et confirmer l'import du realm (Linux/macOS) :
-```bash
-docker-compose logs keycloak | grep "Added realm"
-```
-
-Sous Windows PowerShell :
-```powershell
-docker-compose logs keycloak | Select-String "Added realm"
-```
-
 ---
 
 ## 6. Vérification du realm `rail`
@@ -143,26 +133,7 @@ Si une réponse `401 Unauthorized` apparaît, vérifier que le token n’a pas e
 
 ---
 
-## 10. Tester l’API en ligne de commande
-
-Exemple pour récupérer les régions :
-
-```bash
-TOKEN="votre_token"
-curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/regions
-```
-
-Autres commandes utiles :
-
-```bash
-curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/stations?limit=5
-curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/trains
-curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/alerts/major
-```
-
----
-
-## 11. Structure des principales routes
+## 10. Structure des principales routes
 
 | Méthode | Endpoint | Description |
 |---------|----------|-------------|
@@ -183,7 +154,7 @@ Les réponses sont sérialisées avec Pydantic et documentées automatiquement d
 
 ---
 
-## 12. Architecture interne (résumé)
+## 11. Architecture interne (résumé)
 
 - `app/main.py` : création de l’application FastAPI, enregistrement des middlewares et redirection `/ -> /docs`.
 - `app/core/security.py` : validation des tokens Keycloak (signature RS256, audience, issuer, expiration).
@@ -194,7 +165,7 @@ Les réponses sont sérialisées avec Pydantic et documentées automatiquement d
 
 ---
 
-## 13. Sources de données externes
+## 12. Sources de données externes
 
 | Source | Usage | Authentification |
 |--------|-------|------------------|
@@ -206,7 +177,7 @@ Renseigner les clés correspondantes dans `.env` si nécessaire.
 
 ---
 
-## 14. Dépannage
+## 13. Dépannage
 
 | Problème | Symptôme | Solution |
 |----------|----------|----------|
@@ -219,7 +190,7 @@ Renseigner les clés correspondantes dans `.env` si nécessaire.
 
 ---
 
-## 15. Arrêt et nettoyage
+## 14. Arrêt et nettoyage
 
 Pour arrêter les services Docker :
 ```bash
@@ -233,12 +204,4 @@ docker-compose down -v
 
 ---
 
-## 16. Points à vérifier avant remise du projet
-
-1. L’API répond sur http://localhost:8000/docs.
-2. Les conteneurs `postgres`, `keycloak` et `pgadmin` sont en état `healthy`.
-3. Le realm `rail` et le client `rail-traffic-api` existent dans Keycloak.
-4. La commande curl d’obtention de token fonctionne.
-5. Au moins un endpoint (ex : `/regions`) retourne des données avec un token valide.
-
-Une fois ces points validés, le projet est prêt à être présenté. Bonne utilisation !
+# Projet de Gaspard Pauchet, Nicolas Maury, Julian Gabry, Jean Macario et Pierre Chevalier 
